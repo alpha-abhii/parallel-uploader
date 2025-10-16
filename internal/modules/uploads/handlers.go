@@ -3,17 +3,18 @@ package uploads
 import (
 	"log"
 	"net/http"
+	"context"
 
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
-	service *Service
+	uploader Uploader
 }
 
-func NewHandler(s *Service) *Handler {
+func NewHandler(uploader Uploader) *Handler {
 	return &Handler{
-		service: s,
+		uploader: uploader,
 	}
 }
 
@@ -24,7 +25,9 @@ func (h *Handler) HandleInitiateUpload(c *gin.Context) {
 		return
 	}
 
-	uploadID, err := h.service.InitiateUpload(req)
+	ctx := context.Background()
+	state, err := h.uploader.InitiateUpload(ctx, req)
+
 	if err != nil {
 		log.Printf("ERROR: failed to initiate upload: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to initiate upload"})
@@ -32,7 +35,7 @@ func (h *Handler) HandleInitiateUpload(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"uploadId": uploadID,
+		"uploadId": state.ID,
 	})
 }
 

@@ -1,0 +1,58 @@
+package uploads
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/google/uuid"
+)
+
+type S3Uploader struct {
+	s3Client *s3.Client
+	store    StateStore
+	bucket   string
+}
+
+func NewS3Uploader(s3Client *s3.Client, store StateStore, bucketName string) *S3Uploader {
+	return &S3Uploader{
+		s3Client: s3Client,
+		store:    store,
+		bucket:   bucketName,
+	}
+}
+
+func (u *S3Uploader) InitiateUpload(ctx context.Context, req InitiateRequest) (UploadState, error) {
+	uploadID := uuid.New().String()
+
+	s3Input := &s3.CreateMultipartUploadInput{
+		Bucket: &u.bucket,
+		Key:    &req.FileName,
+	}
+	log.Printf("Initiating multipart upload for file: %s in bucket: %s", req.FileName, u.bucket)
+
+	s3Output, err := u.s3Client.CreateMultipartUpload(ctx, s3Input)
+	if err != nil {
+		return UploadState{}, fmt.Errorf("s3 client failed to create multipart upload: %w", err)
+	}
+
+	state := UploadState{
+		ID:         uploadID,
+		S3UploadID: *s3Output.UploadId,
+		FileName:   req.FileName,
+		Status:     "pending",
+		Timestamp:  time.Now(),
+		Parts:      make(map[int32]string),
+	}
+
+	if err := u.store.SetState(ctx, state); err != nil {
+		return UploadState{}, fmt.Errorf("failed to save initial upload state (S3 Upload ID: %s): %w", *s3Output.UploadId, err)
+	}
+
+	log.Printf("Successfully initiated S3 upload: %s (Internal ID: %s)", *s3Output.UploadId, uploadID)
+	return state, nil
+}
+
+var _ Uploader = (*S3Uploader)(nil)

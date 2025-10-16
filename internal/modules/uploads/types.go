@@ -20,9 +20,10 @@ type CompleteRequest struct {
 }
 
 type UploadState struct {
-	ID         string    `json:"id"`
-	S3UploadID string    `json:"s3UploadId"`
-	FileName   string    `json:"fileName"`
-	Status     string    `json:"status"`
-	Timestamp  time.Time `json:"timestamp"`
+	ID         string           `json:"id"`
+	S3UploadID string           `json:"s3UploadId"`
+	FileName   string           `json:"fileName"`
+	Status     string           `json:"status"`
+	Parts      map[int32]string `json:"parts"`
+	Timestamp  time.Time        `json:"timestamp"`
 }
