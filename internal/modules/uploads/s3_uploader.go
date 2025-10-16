@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/google/uuid"
 )
 
@@ -78,6 +79,39 @@ func (u *S3Uploader) GetPresignedURL(ctx context.Context, uploadID string, partN
 
 	log.Printf("Generated presigned URL for Part %d of Upload ID %s", partNumber, uploadID)
 	return presignedURL.URL, nil
+}
+
+func (u *S3Uploader) CompleteUpload(ctx context.Context, uploadID string, parts []CompletedPart) error {
+	state, err := u.store.GetState(ctx, uploadID)
+	if err != nil {
+		return fmt.Errorf("failed to get upload state for completion: %w", err)
+	}
+
+	var completedParts []types.CompletedPart
+	for _, p := range parts {
+		pNum := int32(p.PartNumber)
+		completedParts = append(completedParts, types.CompletedPart{
+			ETag:       &p.ETag,
+			PartNumber: &pNum,
+		})
+	}
+
+	completeInput := &s3.CompleteMultipartUploadInput{
+		Bucket:   &u.bucket,
+		Key:      &state.FileName,
+		UploadId: &state.S3UploadID,
+		MultipartUpload: &types.CompletedMultipartUpload{
+			Parts: completedParts,
+		},
+	}
+
+	_, err = u.s3Client.CompleteMultipartUpload(ctx, completeInput)
+	if err != nil {
+		return fmt.Errorf("failed to complete multipart upload: %w", err)
+	}
+
+	log.Printf("Successfully completed upload for internal ID: %s", uploadID)
+	return nil
 }
 
 var _ Uploader = (*S3Uploader)(nil)

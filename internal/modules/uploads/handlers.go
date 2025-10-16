@@ -62,5 +62,23 @@ func (h *Handler) HandleGetPresignedURL(c *gin.Context) {
 }
 
 func (h *Handler) HandleCompleteUpload(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "complete upload not implemented"})
+	uploadID := c.Param("uploadId")
+
+	var req CompleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request, missing parts"})
+		return
+	}
+
+	ctx := context.Background()
+	err := h.uploader.CompleteUpload(ctx, uploadID, req.Parts)
+	if err != nil {
+		log.Printf("ERROR: failed to complete upload %s: %v", uploadID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to complete upload"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Upload successful",
+	})
 }
