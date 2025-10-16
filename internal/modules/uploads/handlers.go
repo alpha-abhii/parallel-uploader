@@ -40,7 +40,25 @@ func (h *Handler) HandleInitiateUpload(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetPresignedURL(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "get presigned url not implemented"})
+	uploadID := c.Param("uploadId")
+
+	var req PresignedURLRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request, missing partNumber"})
+		return
+	}
+
+	ctx := context.Background()
+	url, err := h.uploader.GetPresignedURL(ctx, uploadID, req.PartNumber)
+	if err != nil {
+		log.Printf("ERROR: failed to get presigned URL for upload %s: %v", uploadID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get presigned URL"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"url": url,
+	})
 }
 
 func (h *Handler) HandleCompleteUpload(c *gin.Context) {

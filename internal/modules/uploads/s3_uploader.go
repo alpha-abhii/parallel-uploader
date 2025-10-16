@@ -55,4 +55,29 @@ func (u *S3Uploader) InitiateUpload(ctx context.Context, req InitiateRequest) (U
 	return state, nil
 }
 
+func (u *S3Uploader) GetPresignedURL(ctx context.Context, uploadID string, partNumber int64) (string, error) {
+	state, err := u.store.GetState(ctx, uploadID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get upload state for presigned URL: %w", err)
+	}
+
+	pNum := int32(partNumber)
+	presignClient := s3.NewPresignClient(u.s3Client)
+
+	uploadPartInput := &s3.UploadPartInput{
+		Bucket:     &u.bucket,
+		Key:        &state.FileName,
+		UploadId:   &state.S3UploadID,
+		PartNumber: &pNum,
+	}
+
+	presignedURL, err := presignClient.PresignUploadPart(ctx, uploadPartInput, s3.WithPresignExpires(15*time.Minute))
+	if err != nil {
+		return "", fmt.Errorf("failed to generate presigned URL: %w", err)
+	}
+
+	log.Printf("Generated presigned URL for Part %d of Upload ID %s", partNumber, uploadID)
+	return presignedURL.URL, nil
+}
+
 var _ Uploader = (*S3Uploader)(nil)
