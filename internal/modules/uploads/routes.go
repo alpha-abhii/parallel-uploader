@@ -2,11 +2,11 @@ package uploads
 
 import "github.com/gin-gonic/gin"
 
-func RegisterUploadRoutes(router *gin.RouterGroup) {
+func RegisterUploadRoutes(router *gin.RouterGroup, h *Handler) {
 	uploadRoutes := router.Group("/uploads")
 	{
-		uploadRoutes.POST("/initiate", HandleInitiateUpload)
-		uploadRoutes.POST("/:uploadId/presigned-url", HandleGetPresignedURL)
-		uploadRoutes.POST("/:uploadId/complete", HandleCompleteUpload)
+		uploadRoutes.POST("/initiate", h.HandleInitiateUpload)
+		uploadRoutes.POST("/:uploadId/presigned-url", h.HandleGetPresignedURL)
+		uploadRoutes.POST("/:uploadId/complete", h.HandleCompleteUpload)
 	}
 }

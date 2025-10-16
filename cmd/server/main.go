@@ -4,17 +4,19 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-	
 	"github.com/alpha-abhii/parallel-uploader/internal/modules/uploads"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	router := gin.Default()
 
+	uploadService := uploads.NewService()
+	uploadHandler := uploads.NewHandler(uploadService)
+
 	api := router.Group("/api/v1")
 
-	uploads.RegisterUploadRoutes(api)
+	uploads.RegisterUploadRoutes(api, uploadHandler)
 
 	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
